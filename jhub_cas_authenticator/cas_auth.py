@@ -1,4 +1,3 @@
-
 import logging
 import os
 import urllib.parse
@@ -139,10 +138,15 @@ class CASAuthenticator(Authenticator):
             help="A set of attribute name and value tuples a user must have to be allowed access."
         ).tag(config=True)
 
+    login_service = Unicode(config=True, allow_none=True, default_value=None, help="Label to display on the sign in button.")
+
     def get_handlers(self, app):
         return [
-            (r'/login', CASLoginHandler),
+            (r'/cas-login', CASLoginHandler),
         ]
+
+    def login_url(self, base_url):
+        return '/cas-login'
 
     @gen.coroutine
     def authenticate(self, *args):
@@ -159,4 +163,3 @@ def find_child_element(elm, child_local_name):
         if tag.localname == child_local_name:
             return child_elm
     return None
-        
