@@ -25,15 +25,15 @@ class CASLoginHandler(BaseHandler):
     def post(self):
         if 'EXAM_PASSWORD' in os.environ:
             if os.environ['EXAM_PASSWORD'] == self.get_argument('exam_password'):
-                do_login(self)
+                self.do_login(self)
             else:
                 self.redirect(url_path_join(self.hub.server.base_url, 'login'))
         else:
-            do_login(self)
+            self.do_login(self)
 
     @gen.coroutine
     def get(self):
-        do_login(self)
+        self.do_login(self)
 
     def do_login(self):
         app_log = logging.getLogger("tornado.application")
