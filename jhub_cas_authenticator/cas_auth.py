@@ -59,15 +59,15 @@ class CASLoginHandler(BaseHandler):
     def post(self):
         if 'EXAM_PASSWORD' in os.environ:
             if os.environ['EXAM_PASSWORD'] == self.get_argument('exam_password'):
-                raise do_login(self)
+                return do_login(self)
             else:
                 self.redirect(url_path_join(self.hub.server.base_url, 'login'))
         else:
-            raise do_login(self)
+            return do_login(self)
 
     @gen.coroutine
     def get(self):
-        raise do_login(self)
+        return do_login(self)
 
     def make_service_url(self):
         """
