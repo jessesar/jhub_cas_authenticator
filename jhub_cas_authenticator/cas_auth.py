@@ -15,6 +15,40 @@ from traitlets import (
     Unicode,
 )
 
+def do_login(self):
+    app_log = logging.getLogger("tornado.application")
+    ticket = self.get_argument("ticket", None)
+    has_service_ticket = not ticket is None
+    app_log.debug("Has service ticket? {0}".format(has_service_ticket))
+    if not has_service_ticket: 
+        cas_service_url = self.make_service_url()
+        qs_map = dict(service=cas_service_url)
+        qs = urllib.parse.urlencode(qs_map)
+        url = "{0}?{1}".format(self.authenticator.cas_login_url, qs) 
+        app_log.debug("Redirecting to CAS to get service ticket: {0}".format(url))
+        self.redirect(url)
+    else:
+        app_log.debug("Validating service ticket {0}...".format(ticket[:10]))
+        result = yield self.validate_service_ticket(ticket)
+        is_valid, user, attributes = result
+        if is_valid:
+            app_log.debug("Service ticket was valid.")
+            app_log.debug("User is '{0}'.".format(user))
+            for a, v in attributes:
+                app_log.debug("Attribute {0}: {1}".format(a, v))
+            required_attribs = self.authenticator.cas_required_attribs
+            if not required_attribs.issubset(attributes):
+                app_log.debug("Missing required attributes:")
+                missing = required_attribs - attributes
+                for a, v in missing:
+                    app_log.debug("Attribute {0}: {1}".format(a, v))
+                web.HTTPError(401)
+            app_log.debug("CAS authentication successful for '{0}'.".format(user))
+            avatar = self.user_from_username(user)
+            self.set_login_cookie(avatar)
+            self.redirect(url_path_join(self.hub.server.base_url, 'home'))
+        else:
+            raise web.HTTPError(401)
 
 class CASLoginHandler(BaseHandler):
     """
@@ -25,51 +59,15 @@ class CASLoginHandler(BaseHandler):
     def post(self):
         if 'EXAM_PASSWORD' in os.environ:
             if os.environ['EXAM_PASSWORD'] == self.get_argument('exam_password'):
-                self.do_login()
+                do_login(self)
             else:
                 self.redirect(url_path_join(self.hub.server.base_url, 'login'))
         else:
-            self.do_login()
+            do_login(self)
 
     @gen.coroutine
     def get(self):
-        self.do_login()
-
-    @gen.coroutine
-    def do_login(self):
-        app_log = logging.getLogger("tornado.application")
-        ticket = self.get_argument("ticket", None)
-        has_service_ticket = not ticket is None
-        app_log.debug("Has service ticket? {0}".format(has_service_ticket))
-        if not has_service_ticket: 
-            cas_service_url = self.make_service_url()
-            qs_map = dict(service=cas_service_url)
-            qs = urllib.parse.urlencode(qs_map)
-            url = "{0}?{1}".format(self.authenticator.cas_login_url, qs) 
-            app_log.debug("Redirecting to CAS to get service ticket: {0}".format(url))
-            self.redirect(url)
-        else:
-            app_log.debug("Validating service ticket {0}...".format(ticket[:10]))
-            result = yield self.validate_service_ticket(ticket)
-            is_valid, user, attributes = result
-            if is_valid:
-                app_log.debug("Service ticket was valid.")
-                app_log.debug("User is '{0}'.".format(user))
-                for a, v in attributes:
-                    app_log.debug("Attribute {0}: {1}".format(a, v))
-                required_attribs = self.authenticator.cas_required_attribs
-                if not required_attribs.issubset(attributes):
-                    app_log.debug("Missing required attributes:")
-                    missing = required_attribs - attributes
-                    for a, v in missing:
-                        app_log.debug("Attribute {0}: {1}".format(a, v))
-                    web.HTTPError(401)
-                app_log.debug("CAS authentication successful for '{0}'.".format(user))
-                avatar = self.user_from_username(user)
-                self.set_login_cookie(avatar)
-                self.redirect(url_path_join(self.hub.server.base_url, 'home'))
-            else:
-                raise web.HTTPError(401)
+        do_login(self)
 
     def make_service_url(self):
         """
