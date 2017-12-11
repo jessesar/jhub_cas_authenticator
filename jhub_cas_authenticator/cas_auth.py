@@ -35,6 +35,7 @@ class CASLoginHandler(BaseHandler):
     def get(self):
         self.do_login()
 
+    @gen.coroutine
     def do_login(self):
         app_log = logging.getLogger("tornado.application")
         ticket = self.get_argument("ticket", None)
