@@ -77,10 +77,13 @@ class CASLoginHandler(BaseHandler):
         ticket = self.get_argument("ticket", None)
         has_service_ticket = not ticket is None
 
-        if 'EXAM_PASSWORD' in os.environ and not has_service_ticket:
-            raise web.HTTPError(401)
-        else:
-            return do_login(self)
+        exam = self.get_eligible_exam()
+        
+        if exam:
+            if exam['exam_password'] and not has_service_ticket:
+                raise web.HTTPError(401)
+            else:
+                return do_login(self)
 
     def make_service_url(self):
         """
