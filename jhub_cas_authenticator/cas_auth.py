@@ -46,7 +46,11 @@ def do_login(self):
             app_log.debug("CAS authentication successful for '{0}'.".format(user))
             avatar = self.user_from_username(user)
             self.set_login_cookie(avatar)
-            self.redirect(url_path_join(self.hub.server.base_url, 'home'))
+            
+            if not avatar.exam:
+                self.redirect(url_path_join(self.hub.server.base_url, 'select-exam'))
+            else:
+                self.redirect(url_path_join(self.hub.server.base_url, 'home'))
         else:
             raise web.HTTPError(401)
 
@@ -57,13 +61,16 @@ class CASLoginHandler(BaseHandler):
 
     @gen.coroutine
     def post(self):
-        if 'EXAM_PASSWORD' in os.environ:
-            if os.environ['EXAM_PASSWORD'] == self.get_argument('exam_password'):
-                return do_login(self)
+        exam = self.get_eligible_exam()
+        
+        if exam:
+            if exam['exam_password']:
+                if exam['exam_password'] == self.get_argument('exam_password'):
+                    return do_login(self)
+                else:
+                    self.redirect(url_path_join(self.hub.server.base_url, 'login'))
             else:
-                self.redirect(url_path_join(self.hub.server.base_url, 'login'))
-        else:
-            return do_login(self)
+                return do_login(self)
 
     @gen.coroutine
     def get(self):
