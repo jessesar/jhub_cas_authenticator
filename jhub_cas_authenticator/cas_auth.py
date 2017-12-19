@@ -47,7 +47,9 @@ def do_login(self):
             avatar = self.user_from_username(user)
             self.set_login_cookie(avatar)
             
-            if not avatar.exam:
+            exam = self.get_eligible_exam()
+            
+            if not avatar.exam or avatar.exam != exam['name']:
                 self.redirect(url_path_join(self.hub.server.base_url, 'select-exam'))
             else:
                 self.redirect(url_path_join(self.hub.server.base_url, 'home'))
